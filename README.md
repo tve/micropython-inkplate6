@@ -1,13 +1,16 @@
-Inkplate 6
-==========
+Inkplate 6 & Inkplate 10
+========================
 
-This repository contains MicroPython drivers for the E-Radionica Inkplate 6: an ESP32 board with
-a 6" E-paper display and three capacitive touch buttons/sensors.
+This repository contains MicroPython drivers for the E-Radionica Inkplates 6 and 10:
+an ESP32 board with a 6", respectively 10", E-paper display and three capacitive touch
+buttons/sensors.
 
-### Inkplate 6 info
+### Inkplate info
 
-- CrowdSupply project: https://www.crowdsupply.com/e-radionica/inkplate-6
-- Hardware: https://github.com/e-radionicacom/Inkplate-6-hardware
+- CrowdSupply projects: https://www.crowdsupply.com/e-radionica/inkplate-6 and
+  https://www.crowdsupply.com/e-radionica/inkplate-10
+- Hardware: https://github.com/e-radionicacom/Inkplate-6-hardware and
+  https://github.com/e-radionicacom/Inkplate-10-hardware
 - Forum: http://forum.e-radionica.com/en/viewtopic.php?f=25&t=260
 
 ### Features
@@ -20,6 +23,11 @@ a 6" E-paper display and three capacitive touch buttons/sensors.
   compressed format.
 - Access to touch sensors.
 - Everything in pure python with screen updates virtually as fast as the Arduino C driver.
+
+Inkplate 10 issues:
+- the grey scale waveforms in the `InkplateGS2` class still need some tweaking:
+  the greys come out too light.
+- the partial update does weird stuff if more then ~400 lines are skipped.
 
 Getting started
 ---------------
@@ -34,6 +42,9 @@ Getting started
   ```
   (You can find `pyboard.py` in the MicroPython tools directory or just download it from
   GitHub: https://raw.githubusercontent.com/micropython/micropython/master/tools/pyboard.py)
+
+- For the Inkplate 10 change the comments for `D_ROWS` and `D_COLS` around on lines 31-36
+  of `inkplate.py`.
 
 - Run `inkplate.py`:
   ```

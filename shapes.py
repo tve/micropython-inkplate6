@@ -9,7 +9,7 @@
 class Shapes:
 
     # __mix_me_in adds the methods of this class to another class.  Typical usage is to put
-    # something like Shapes.__mix_me_in(MyClass) after tha class definition.
+    # something like Shapes.__mix_me_in(MyClass) after the class definition.
     @classmethod
     def __mix_me_in(cls, target):
         for func in dir(cls):

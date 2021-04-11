@@ -28,9 +28,12 @@ EPD_LE = const(0x00000004)  # in W1Tx0
 EPD_CKV = const(0x00000001)  # in W1Tx1
 EPD_SPH = const(0x00000002)  # in W1Tx1
 
-# Raw display constants
+# Raw display constants for Inkplate 6
 D_ROWS = const(600)
 D_COLS = const(800)
+# Raw display constants for Inkplate 10
+# D_ROWS = const(825)
+# D_COLS = const(1200)
 
 # Inkplate provides access to the pins of the Inkplate 6 as well as to low-level display
 # functions.
@@ -253,12 +256,13 @@ class InkplateMono(framebuf.FrameBuffer):
     @micropython.viper
     @staticmethod
     def _send_row(lut_in, framebuf, row: int):
+        ROW_LEN = D_COLS >> 3  # length of row in bytes
         # cache vars into locals
         w1ts0 = ptr32(int(ESP32_GPIO + 4 * W1TS0))
         w1tc0 = ptr32(int(ESP32_GPIO + 4 * W1TC0))
         off = int(EPD_DATA | EPD_CL)  # mask with all data bits and clock bit
         fb = ptr8(framebuf)
-        ix = int(row * (D_COLS >> 3) + 99)  # index into framebuffer
+        ix = int(row * ROW_LEN + ROW_LEN - 1)  # index into framebuffer
         lut = ptr32(lut_in)
         # send first byte
         data = int(fb[ix])
@@ -272,8 +276,8 @@ class InkplateMono(framebuf.FrameBuffer):
         w1ts0[0] = lut[data & 0xF]
         # w1tc0[0] = EPD_CL
         w1tc0[0] = off
-        # send the remaining bytes (792 pixels)
-        for c in range(99):
+        # send the remaining bytes
+        for c in range(ROW_LEN - 1):
             data = int(fb[ix])
             ix -= 1
             w1ts0[0] = lut[data >> 4]
@@ -374,12 +378,13 @@ class InkplateGS2(framebuf.FrameBuffer):
     @micropython.viper
     @staticmethod
     def _send_row(lut_in, framebuf, row: int):
+        ROW_LEN = D_COLS >> 2  # length of row in bytes
         # cache vars into locals
         w1ts0 = ptr32(int(ESP32_GPIO + 4 * W1TS0))
         w1tc0 = ptr32(int(ESP32_GPIO + 4 * W1TC0))
         off = int(EPD_DATA | EPD_CL)  # mask with all data bits and clock bit
         fb = ptr8(framebuf)
-        ix = int(row * 200 + 199)  # index into framebuffer
+        ix = int(row * ROW_LEN + (ROW_LEN - 1))  # index into framebuffer
         lut = ptr8(lut_in)
         b2g = ptr32(Inkplate.byte2gpio)
         # send first byte
@@ -391,8 +396,8 @@ class InkplateGS2(framebuf.FrameBuffer):
         # w1tc0[0] = EPD_CL  # clear clock, leaving data bits (unreliable if data also cleared)
         w1tc0[0] = off  # clear data bits as well ready for next byte
         w1ts0[W1TS1 - W1TS0] = EPD_SPH
-        # send the remaining bytes (792 pixels)
-        for c in range(199):
+        # send the remaining bytes
+        for c in range(ROW_LEN - 1):
             data = int(fb[ix])
             ix -= 1
             w1ts0[0] = b2g[lut[data >> 4] << 4 | lut[data & 0xF]] | EPD_CL
@@ -570,13 +575,14 @@ class InkplatePartial:
     @micropython.viper
     @staticmethod
     def _send_row(lut_in, old_framebuf, new_framebuf, row: int):
+        ROW_LEN = D_COLS >> 3  # length of row in bytes
         # cache vars into locals
         w1ts0 = ptr32(int(ESP32_GPIO + 4 * W1TS0))
         w1tc0 = ptr32(int(ESP32_GPIO + 4 * W1TC0))
         off = int(EPD_DATA | EPD_CL)  # mask with all data bits and clock bit
         ofb = ptr8(old_framebuf)
         nfb = ptr8(new_framebuf)
-        ix = int(row * (D_COLS >> 3) + 99)  # index into framebuffer
+        ix = int(row * ROW_LEN + (ROW_LEN - 1))  # index into framebuffer
         lut = ptr32(lut_in)
         # send first byte
         odata = int(ofb[ix])
@@ -596,8 +602,8 @@ class InkplatePartial:
             w1ts0[W1TS1 - W1TS0] = EPD_SPH
             w1ts0[0] = lut[((odata & 0xF) << 4) + (ndata & 0xF)]
             w1tc0[0] = off
-        # send the remaining bytes (792 pixels)
-        for c in range(99):
+        # send the remaining bytes
+        for c in range(ROW_LEN - 1):
             odata = int(ofb[ix])
             ndata = int(nfb[ix])
             ix -= 1
@@ -636,16 +642,16 @@ if __name__ == "__main__":
             ipm.clear()
             t0 = time.ticks_ms()
             for x in range(300, 500, 20):
-                ipm.line(x, 0, x + 10, 599, 1)
+                ipm.line(x, 0, x + 10, D_ROWS - 1, 1)
             ipm.fill_rect(50, 300, 200, 100, 1)
             ipm.fill_rect(400, 400, 300, 100, 1)
             for y in range(100):
                 ipm.pixel(y, y, 1)
                 ipm.pixel(y, 0, 1)
                 ipm.pixel(0, y, 1)
-                ipm.pixel(799 - y, 599 - y, 1)
-                ipm.pixel(799 - y, 599 - 0, 1)
-                ipm.pixel(799 - 0, 599 - y, 1)
+                ipm.pixel(D_COLS - 1 - y, D_ROWS - 1 - y, 1)
+                ipm.pixel(D_COLS - 1 - y, D_ROWS - 1 - 0, 1)
+                ipm.pixel(D_COLS - 1 - 0, D_ROWS - 1 - y, 1)
             for y in range(100, 160):
                 for x in range(100, 200):
                     ipm.pixel(x, y, 1)
@@ -664,15 +670,15 @@ if __name__ == "__main__":
             for i in range(24):
                 c = i & 3
                 x = 100 + i * 20
-                ipg.line(x, 0, x + 10, 599, c)
+                ipg.line(x, 0, x + 10, D_ROWS - 1, c)
             for y in range(100):
                 ipg.pixel(y, y, 0)
                 ipg.pixel(y, 0, 0)
                 ipg.pixel(0, y, 0)
-                ipg.pixel(799 - y, 599 - y, 0)
-                ipg.pixel(799 - y, 599 - 0, 0)
-                ipg.pixel(799 - 0, 599 - y, 0)
-            ipg.line(800, 0, 600, 200, 0)
+                ipg.pixel(D_COLS - 1 - y, D_ROWS - 1 - y, 0)
+                ipg.pixel(D_COLS - 1 - y, D_ROWS - 1 - 0, 0)
+                ipg.pixel(D_COLS - 1 - 0, D_ROWS - 1 - y, 0)
+            ipg.line(D_COLS - 1, 0, D_ROWS - 1, 200, 0)
             for i in range(4):
                 ipg.fill_rect(50, 300 + i * 50, 300, 50, i)
                 ipg.fill_circle(700, 300, 100 - i * 20, i)
@@ -715,7 +721,6 @@ if __name__ == "__main__":
                 time.sleep_ms(1000)
 
         if True:
-
             # Draw the hello-world label into its own framebuffer
             # framebuf.FrameBuffer cannot be extended, so we need to wrap it, ugh!
             class MyFB(framebuf.FrameBuffer):
@@ -735,10 +740,10 @@ if __name__ == "__main__":
 
             # work-around for a bug in v1.12, fixed in
             # https://github.com/micropython/micropython/pull/5681
-            hello = framebuf.FrameBuffer(hello._fb, 302, 53, framebuf.MONO_HMSB, 304)
+            # hello = framebuf.FrameBuffer(hello._fb, 302, 53, framebuf.MONO_HMSB, 304)
 
             for i in range(60):
-                ipm.line(0, 600, 800, 600-10*i, 1)
+                ipm.line(0, D_ROWS, D_COLS, D_ROWS - 10 * i, 1)
             ipm.display()
 
             # initial version of framebuffer so we can restore that
@@ -752,7 +757,7 @@ if __name__ == "__main__":
                 ipm._framebuf[:] = revert_fb[:]
                 ymin = y
                 ymax = y + 53
-                #ipm.fill_rect(x, y, 302, 53, 0)
+                # ipm.fill_rect(x, y, 302, 53, 0)
                 if i < 10:
                     x -= 20
                     y += 15
@@ -772,7 +777,7 @@ if __name__ == "__main__":
                 ipm.blit(hello, x, y)
                 print("Draw: in %dms" % (time.ticks_diff(time.ticks_ms(), t0)))
                 ipp.display(y=ymin, h=ymax - ymin)
-                #ipp.display()
+                # ipp.display()
             ipp.start()
             ipm._framebuf[:] = revert_fb[:]
             ipp.display()
