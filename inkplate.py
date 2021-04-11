@@ -8,6 +8,47 @@ from mcp23017 import MCP23017
 from micropython import const
 from shapes import Shapes
 
+# ===== Constants that change between the Inkplate 6 and 10
+
+# Raw display constants for Inkplate 6
+D_ROWS = const(600)
+D_COLS = const(800)
+# Raw display constants for Inkplate 10
+# D_ROWS = const(825)
+# D_COLS = const(1200)
+
+# Waveforms for 2 bits per pixel grey-scale.
+# Order of 4 values in each tuple: blk, dk-grey, light-grey, white
+# Meaning of values: 0=dischg, 1=black, 2=white, 3=skip
+# Uses "colors" 0 (black), 3, 5, and 7 (white) from 3-bit waveforms below
+WAVE_2B_ORIG = (  # original mpy driver for Ink 6, differs from arduino driver below
+    (0, 0, 0, 0),
+    (0, 0, 0, 0),
+    (0, 1, 1, 0),
+    (0, 1, 1, 0),
+    (1, 2, 1, 0),
+    (1, 1, 2, 0),
+    (1, 2, 2, 2),
+)
+WAVE_2B_10 = (  # For Inkplate 10, colors 0, 3, 5-tweaked, and 7 from arduino driver
+    (0, 1, 0, 0),  # (arduino color 5 was too light and color 4 too dark)
+    (0, 2, 0, 0),
+    (0, 2, 0, 2),
+    (0, 1, 2, 2),
+    (0, 2, 1, 2),
+    (0, 2, 1, 2),
+    (1, 1, 2, 2),
+)
+WAVE = WAVE_2B_ORIG  # Inkplate 10
+# Ink6 WAVEFORM3BIT from arduino driver
+# {{0,1,1,0,0,1,1,0},{0,1,2,1,1,2,1,0},{1,1,1,2,2,1,0,0},{0,0,0,1,1,1,2,0},
+#  {2,1,1,1,2,1,2,0},{2,2,1,1,2,1,2,0},{1,1,1,2,1,2,2,0},{0,0,0,0,0,0,2,0}};
+# Ink10 WAVEFORM3BIT from arduino driver
+# {{0,0,0,0,0,0,1,0},{0,0,2,2,2,1,1,0},{0,2,1,1,2,2,1,0},{1,2,2,1,2,2,1,0},
+#  {0,2,1,2,2,2,1,0},{2,2,2,2,2,2,1,0},{0,0,0,0,2,1,2,0},{0,0,2,2,2,2,2,0}};
+
+# ===== End of model-dependent stuff
+
 TPS65186_addr = const(0x48)  # I2C address
 
 # ESP32 GPIO set and clear registers to twiddle 32 gpio bits at once
@@ -27,13 +68,6 @@ EPD_CL = const(0x00000001)  # in W1Tx0
 EPD_LE = const(0x00000004)  # in W1Tx0
 EPD_CKV = const(0x00000001)  # in W1Tx1
 EPD_SPH = const(0x00000002)  # in W1Tx1
-
-# Raw display constants for Inkplate 6
-D_ROWS = const(600)
-D_COLS = const(800)
-# Raw display constants for Inkplate 10
-# D_ROWS = const(825)
-# D_COLS = const(1200)
 
 # Inkplate provides access to the pins of the Inkplate 6 as well as to low-level display
 # functions.
@@ -364,15 +398,7 @@ class InkplateGS2(framebuf.FrameBuffer):
         def genlut(op):
             return bytes([op[j] | op[i] << 2 for i in range(4) for j in range(4)])
 
-        cls._wave = [
-            genlut([0, 0, 0, 0]),  # order: blk, dk-grey, light-grey, white
-            genlut([0, 0, 0, 0]),  # value: 0=dischg, 1=black, 2=white, 3=skip
-            genlut([0, 1, 1, 0]),
-            genlut([0, 1, 1, 0]),
-            genlut([1, 2, 1, 0]),
-            genlut([1, 1, 2, 0]),
-            genlut([1, 2, 2, 2]),
-        ]
+        cls._wave = [genlut(w) for w in WAVE]
 
     # _send_row writes a row of data to the display
     @micropython.viper
