@@ -24,11 +24,6 @@ buttons/sensors.
 - Access to touch sensors.
 - Everything in pure python with screen updates virtually as fast as the Arduino C driver.
 
-Inkplate 10 issues:
-- the grey scale waveforms in the `InkplateGS2` class still need some tweaking:
-  the greys come out too light.
-- the partial update does weird stuff if more then ~400 lines are skipped.
-
 Getting started
 ---------------
 
